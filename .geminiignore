@@ -1,0 +1,5 @@
+# Block the entire project
+**/*
+
+# Whitelist ONLY your instruction file
+!GEMINI.md

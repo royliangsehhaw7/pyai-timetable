@@ -1,4 +1,4 @@
-# PROGRESS.md — Adaptive School Scheduler
+# PROECT.md — Adaptive School Scheduler
 
 This project is a multi-agent system built with **Pydantic AI** designed to autonomously generate valid, conflict-free weekly school timetables.
 

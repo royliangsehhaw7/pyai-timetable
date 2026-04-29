@@ -3,7 +3,7 @@ The project is currently in the **Implementation** phase.
 - [x] Architecture & Design Finalized (`DESIGN.md`)
 - [x] Environment Setup (Python venv & Libraries)
 - [x] Implement `data/` (Mock registries)
-- [x] Implement `schemas/` (Pydantic models)
+- [ ] Implement `schemas/` (Pydantic models)
 - [ ] Implement `core/` (Logging & Dependencies)
 - [ ] Implement `utilities/` (LLM Factory)
 - [ ] Implement Agents & Tools

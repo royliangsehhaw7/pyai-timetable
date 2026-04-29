@@ -11,8 +11,9 @@ env/
 # Aider logs and metadata
 .aider.chat.history.md
 .aider.input.history
-.aider.tags.cache.v3
-# ... but keep your rules
+.aider.tags.cache* # Catch all versions (v3, v4, etc.)
+
+# Keep your architectural rules and settings
 !.aider.conf.yml
 !.aider.conventions.md
 

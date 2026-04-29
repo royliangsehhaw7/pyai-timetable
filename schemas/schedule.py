@@ -1,7 +1,7 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 class SessionType(str, Enum):
     LECTURE = "Lecture"
@@ -32,6 +32,13 @@ class ScheduledClass(BaseModel):
     room_id: str = Field(description="The ID of the assigned room")
     lecturer_id: str = Field(description="The ID of the assigned lecturer")
 
+    @property
+    def end_time(self) -> time:
+        """Calculates the end time based on start_time and duration_hours."""
+        start_dt = datetime.combine(datetime.today(), self.start_time)
+        end_dt = start_dt + timedelta(hours=self.duration_hours)
+        return end_dt.time()
+
 class WeeklyTimetable(BaseModel):
     """
     The complete weekly timetable for the school.
@@ -42,8 +49,13 @@ class WeeklyTimetable(BaseModel):
     """
     timetable: List[ScheduledClass] = Field(default_factory=list, description="List of all scheduled sessions")
     generated_at: datetime = Field(default_factory=datetime.now, description="Timestamp of when the timetable was generated")
-    total_sessions: int = Field(0, description="Total number of sessions scheduled")
     status: str = Field("Draft", description="Current status of the timetable (e.g., 'Draft', 'Finalized')")
+
+    @computed_field
+    @property
+    def total_sessions(self) -> int:
+        """Returns the total number of sessions scheduled."""
+        return len(self.timetable)
 
 class ValidationResult(BaseModel):
     """

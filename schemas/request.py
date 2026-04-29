@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class ScheduleRequest(BaseModel):
@@ -19,3 +19,7 @@ class ScheduleRequest(BaseModel):
         description="Maximum number of negotiation iterations for the orchestration loop"
     )
     notes: Optional[str] = Field(None, description="Any additional instructions for the scheduler")
+    constraints: Dict[str, Any] = Field(
+        default_factory=dict, 
+        description="Additional scheduling constraints"
+    )

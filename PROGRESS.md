@@ -8,14 +8,16 @@
  - [x] Implement `utilities/` (LLM Factory)                                                           
                                                                                                       
  ## Phase 1: Core Tools                                                                               
- - [ ] Implement Room Availability Toolset                                                            
-   - [ ] Room conflict detector                                                                       
-   - [ ] Room capacity validator                                                                      
-   - [ ] Room specialty checker                                                                       
+   - [ X ] Implement Room Availability Toolset                                                            
+   - [ X ] Room conflict detector                                                                       
+   - [ X ] Room capacity validator                                                                      
+   - [ X ] Room specialty checker
+
    - [ ] Implement Lecturer Validation Tools                                                            
    - [ ] Lecturer availability checker                                                                
    - [ ] Lecturer specialty validator                                                                 
    - [ ] Lecturer workload calculator                                                                 
+   
    - [ ] Implement Timeslot Utilities                                                                   
    - [ ] Period duration validator                                                                    
    - [ ] Lunch break enforcer                                                                         

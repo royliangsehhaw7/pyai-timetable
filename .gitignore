@@ -39,3 +39,6 @@ local_db_config.py
 .DS_Store
 Thumbs.db
 .aider*
+
+## ---- DUMP / TEST FILES --
+dumps/

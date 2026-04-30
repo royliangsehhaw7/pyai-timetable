@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
+from datetime import date
+from typing import Set
 from schemas.schedule import ScheduledClass
+from tools.room_availability import RoomConflictDetector, RoomCapacityValidator, RoomSpecialtyChecker
 
 @dataclass
 class GlobalUsage:
@@ -50,8 +53,23 @@ class DeanDeps(BaseDeps):
 class RegistrarDeps(BaseDeps):
     """Dependencies for the Registrar Agent."""
     rooms: List[Dict[str, Any]]
+    room_bookings: Dict[str, Dict[date, Set[str]]]
+    room_capacities: Dict[str, int]
+    room_equipment: Dict[str, List[str]]
     # Needs current state to check room double-booking
     current_timetable: List[ScheduledClass] = field(default_factory=list)
+
+    @property
+    def room_availability(self) -> RoomConflictDetector:
+        return RoomConflictDetector(self.room_bookings)
+
+    @property
+    def room_capacity_validator(self) -> RoomCapacityValidator:
+        return RoomCapacityValidator(self.room_capacities)
+
+    @property
+    def room_specialty_checker(self) -> RoomSpecialtyChecker:
+        return RoomSpecialtyChecker(self.room_equipment)
 
 @dataclass
 class FacultyDeps(BaseDeps):

@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from datetime import date
 from typing import Set
 from schemas.schedule import ScheduledClass
-from tools.room_availability import RoomConflictDetector, RoomCapacityValidator, RoomSpecialtyChecker
+from tools.room_tools import RoomConflictDetector, RoomCapacityValidator, RoomSpecialtyChecker
 
 @dataclass
 class GlobalUsage:

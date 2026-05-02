@@ -37,6 +37,7 @@ class RoomConflictDetector:
         timeslot = f"{start_time}-{end_time}"
         self.bookings[room_id][day].add(timeslot)
 
+
 @dataclass
 class RoomCapacityValidator:
     """Validates that rooms can accommodate the expected student count."""
@@ -47,6 +48,7 @@ class RoomCapacityValidator:
         if room_id not in self.capacities:
             return False
         return expected_attendance <= self.capacities[room_id]
+
 
 @dataclass
 class RoomSpecialtyChecker:

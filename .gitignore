@@ -40,5 +40,5 @@ local_db_config.py
 Thumbs.db
 .aider*
 
-## ---- DUMP / TEST FILES --
+## ---- DUMP / TEST FILES / OLDER CONFIGS --
 dumps/

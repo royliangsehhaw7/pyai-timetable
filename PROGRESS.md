@@ -1,8 +1,8 @@
 ## Current Status: Implementation In Progress
 The project is currently in the **Implementation** phase.                                            
 - [ ] Architecture & Design Finalized (`SPECIFICATIONS.md`)                                                  
-- [ ] Environment Setup (Python venv & Libraries)                                                    
-- [ ] Implement `data/` (Mock registries)                                                            
+- [x] Environment Setup (Python venv & Libraries)                                                    
+- [x] Implement `data/` (Mock registries)                                                            
 - [ ] Implement `schemas/` (Pydantic models)                                                         
 - [ ] Implement `utilities/` (LLM Factory)                                                           
                                                                                                       

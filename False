@@ -64,3 +64,30 @@
 
 # 2026-05-02 11:50:51.996810
 +/quit
+
+# 2026-05-02 13:34:49.920466
++/add SPECIFICATIONS.md PROGRESS.md
+
+# 2026-05-02 13:35:40.249141
++based on the specs, and the next task which are schemas, what schemas wiil there be?
+
+# 2026-05-02 13:37:30.858727
++show me the communication.py first
+
+# 2026-05-02 13:38:51.328386
++where is the ProposalModel will be used?
+
+# 2026-05-02 13:42:16.464251
++actually in the PROGRESS.md tasks list, i dont see any tasks for core/deps.py, which are the dependenciies for pydantic-ai agents (deps:)
+
+# 2026-05-02 13:42:21.959763
++Y
+
+# 2026-05-02 13:42:39.515344
++N
+
+# 2026-05-02 13:42:43.860989
++/clear
+
+# 2026-05-02 13:43:09.766263
++/quit

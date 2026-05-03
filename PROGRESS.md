@@ -1,151 +1,75 @@
-## Current Status: Implementation In Progress
-The project is currently in the **Foundation Implementation** phase (Phase 1).
-                                                                                                      
-## Phase 0: Infrastructure & Core Setup
-- [x] Environment Setup (Python venv & Libraries)
-- [x] Project structure created
-- [x] `SPECIFICATIONS.md` finalized
-                                                                                                      
-## Phase 1: Core Schemas & Dependency Injection (START HERE)
-### Priority: HIGH – All agents depend on these
-
-#### A. Schema Contracts (`schemas/`)
-- [ ] **Create `schemas/__init__.py`**
-- [ ] **Create `schemas/base.py`** – Base models and shared enums
-- [ ] **Create `schemas/entity.py`** – `EntityModel` (base workload item)
-- [ ] **Create `schemas/proposal.py`** – `ProposalModel` (Course Agent output)
-- [ ] **Create `schemas/validation.py`** – `ValidationResult`, `RejectionReason` (validation outputs)
-- [ ] **Create `schemas/scheduling_request.py`** – Agent input models
-- [ ] **Create `schemas/state.py`** – Internal state models (BlackboardState, GridCell, RejectionLedgerEntry)
-
-#### B. Dependency Injection (`core/`) - NEXT
-- [ ] **Create `core/__init__.py`**
-- [ ] **Create `core/config.py`** – LLM settings, timeouts, environment config
-  - [ ] `AgentConfig` model with LLM provider settings
-  - [ ] `get_agent_config()` factory function
-- [ ] **Create `core/deps.py`** – Dependency registry (CRITICAL)
-  - [ ] `AgentDependencies` model (blackboard, tools, config)
-  - [ ] `ToolRegistry` model for organizing tools
-  - [ ] `get_agent_dependencies()` factory function
-  - [ ] `get_tool_registry()` factory function
-
-#### C. Data Layer (`data/`) – Mock implementations first
-- [x] `data/` exists
-- [ ] **Update `data/__init__.py`**
-- [ ] **Create `data/mock_registries.py`** – Mock data for development
-  - [ ] Mock courses, rooms, lecturers
-  - [ ] Mock availability schedules
-  - [ ] Simple in-memory storage
-
-## Phase 2: Deterministic Tools (Stateless Functions)
-
-#### A. Data Retrieval Tools (`tools/get_data.py`)
-- [ ] **Create `tools/__init__.py`**
-- [ ] **Create `tools/get_data.py`** – Pure data access functions
-  - [ ] `get_course_by_id(course_id) → CourseModel`
-  - [ ] `get_room_by_id(room_id) → RoomModel`
-  - [ ] `get_lecturer_by_id(lecturer_id) → LecturerModel`
-  - [ ] `get_available_rooms(day, time) → List[RoomModel]`
-
-#### B. Course-Specific Tools (`tools/course_tools.py`)
-- [ ] **Create `tools/course_tools.py`** – Course validation logic
-  - [ ] `check_course_requirements(course, day, time) → bool`
-  - [ ] `validate_course_duration(course, start_time, duration) → bool`
-  - [ ] `check_daily_course_cap(course_id, day, grid) → bool`
-
-#### C. Room-Specific Tools (`tools/room_tools.py`)
-- [ ] **Create `tools/room_tools.py`** – Room validation logic
-  - [ ] `check_room_availability(room_id, day, time) → bool`
-  - [ ] `validate_room_capacity(room_id, course_size) → bool`
-  - [ ] `check_room_specialty(room_id, course_type) → bool`
-  - [ ] `detect_room_conflicts(room_id, day, time, grid) → bool`
-
-#### D. Temporal Validation Tools (`tools/temporal_tools.py`)
-- [ ] **Create `tools/temporal_tools.py`** – Time-based validation
-  - [ ] `check_temporal_availability(day, time, grid) → bool`
-  - [ ] `validate_working_hours(day, time) → bool`
-  - [ ] `enforce_lunch_break(day, time) → bool`
-  - [ ] `check_daily_workload_cap(day, course_id, grid) → bool`
-
-## Phase 3: Domain Layer – Blackboard State Management
-
-#### A. Blackboard Implementation (`domain/blackboard.py`)
-- [ ] **Create `domain/__init__.py`**
-- [ ] **Create `domain/blackboard.py`** – Thread-safe state manager
-  - [ ] `Blackboard` class with thread locks
-  - [ ] `get_state() → BlackboardState` (read-only)
-  - [ ] `update_grid(proposal: ProposalModel) → None` (orchestrator only)
-  - [ ] `add_rejection(entry: RejectionLedgerEntry) → None`
-  - [ ] `get_rejection_history(course_id) → List[RejectionLedgerEntry]`
-
-## Phase 4: Agent Implementation (Pydantic AI Agents)
-
-#### A. Strategist Agent (`agents/strategist.py`)
-- [ ] **Create `agents/__init__.py`**
-- [ ] **Create `agents/strategist.py`** – State space reduction
-  - [ ] `Strategist` class inheriting from `Agent`
-  - [ ] Tools: `get_course_data`, `analyze_workload_patterns`
-  - [ ] Method: `analyze_and_prioritize(courses: List[CourseModel]) → ExecutionQueue`
-
-#### B. Course Agent (`agents/course_agent.py`)
-- [ ] **Create `agents/course_agent.py`** – Generator/Proposer
-  - [ ] `CourseAgent` class inheriting from `Agent`
-  - [ ] Tools: `get_course_data`, `check_temporal_availability`, `get_working_hours`, `get_rejection_history`
-  - [ ] Method: `propose_slot(course: CourseModel) → ProposalModel`
-
-#### C. Room Agent (`agents/room_agent.py`)
-- [ ] **Create `agents/room_agent.py`** – Critic/Validator
-  - [ ] `RoomAgent` class inheriting from `Agent`
-  - [ ] Tools: `check_room_availability`, `validate_room_capacity`, `check_room_specialty`
-  - [ ] Method: `validate_room(proposal: ProposalModel) → ValidationResult`
-
-## Phase 5: Services Layer – Orchestration
-
-#### A. Orchestrator (`services/orchestrator.py`)
-- [ ] **Create `services/__init__.py`**
-- [ ] **Create `services/orchestrator.py`** – Mediator & main loop
-  - [ ] `Orchestrator` class managing agent instances
-  - [ ] `initialize_agents(deps: AgentDependencies) → Dict[str, Agent]`
-  - [ ] `run_scheduling_loop(courses: List[CourseModel]) → BlackboardState`
-  - [ ] Reflexion logic: update ledger on failures, retry with feedback
-
-## Phase 6: Application Bootstrap & Integration
-
-#### A. Main Application (`main.py`)
-- [ ] **Create `main.py`** – Application entry point
-  - [ ] Initialize dependency container (`core/deps.py`)
-  - [ ] Load mock data from `data/mock_registries.py`
-  - [ ] Create orchestrator instance
-  - [ ] Run scheduling loop with sample courses
-  - [ ] Output final schedule or failure analysis
-
-#### B. Configuration (`config/`)
-- [ ] **Create `config/__init__.py`**
-- [ ] **Create `config/settings.py`** – Environment-specific settings
-  - [ ] LLM API keys (from environment variables)
-  - [ ] Timeout configurations
-  - [ ] Logging setup
-
-## Phase 7: Testing & Validation
-*(To be implemented after core functionality)*
-- [ ] Unit tests for deterministic tools
-- [ ] Integration tests for agent coordination
-- [ ] End-to-end tests with mocked LLM responses
-- [ ] Performance testing with larger datasets
-
-## Phase 8: Documentation & Polish
-- [ ] API documentation (docstrings)
-- [ ] User guide for running the scheduler
-- [ ] Deployment instructions
-- [ ] Performance optimization if needed
-
----
-
-## Development Workflow Instructions:
-1. **Follow the phase order strictly** – Each phase depends on the previous
-2. **Implement schemas first** – All other components need these models
-3. **Build tools before agents** – Agents depend on injected tools
-4. **Test incrementally** – Verify each component before moving to dependent ones
-5. **Use dependency injection** – All agents get dependencies via `core/deps.py`
-
-**Next Action:** Start with Phase 1A: Create `schemas/communication.py` with `ProposalModel`, `ValidationResult`, etc.
+ ## Phase 1: Core Definitions                                                                                                                                       
+ ### Priority: CRITICAL – All other modules depend on these.                                                                                                        
+                                                                                                                                                                    
+ - [x] **Create `core/log.py`**                                                                                                                                     
+     - **Purpose:** Configure and expose a single, project-wide logger, as per `SPECIFICATIONS.md` §6.2.                                                            
+ - [x] **Create `core/models.py`**                                                                                                                                  
+     - **Purpose:** Define all Pydantic data models for the entire project in one place. This is the single source of truth for data shapes. (§6.2)                 
+     - **Models to include:** `Course`, `Room`, `Lecturer`, `Policy` (§3), `TimetableSlot` (§4), `RoomSuggestion`, `LecturerSuggestion`, `SchedulingFailure` (§8).  
+ - [x] **Create `core/deps.py`**                                                                                                                                    
+     - **Purpose:** Define the `AgentDeps` dataclass for dependency injection into `pydantic-ai` agents. (§8.0)                                                     
+     - **Contents:** A single `@dataclass` named `AgentDeps` containing `board: Blackboard`.                                                                        
+                                                                                                                                                                    
+ ## Phase 2: Data Loading Tools                                                                                                                                     
+ ### Priority: HIGH – The application needs data to run.                                                                                                            
+                                                                                                                                                                    
+ - [ ] **Create `tools/get_courses.py`**                                                                                                                            
+     - **Purpose:** Read `database/courses.json` and return `list[Course]`. (§6.2)                                                                                  
+ - [ ] **Create `tools/get_rooms.py`**                                                                                                                              
+     - **Purpose:** Read `database/rooms.json` and return `list[Room]`. (§6.2)                                                                                      
+ - [ ] **Create `tools/get_lecturers.py`**                                                                                                                          
+     - **Purpose:** Read `database/lecturers.json` and return `list[Lecturer]`. (§6.2)                                                                              
+ - [ ] **Create `tools/get_policy.py`**                                                                                                                             
+     - **Purpose:** Read `database/policy.json` and return a `Policy` object. (§6.2)                                                                                
+                                                                                                                                                                    
+ ## Phase 3: Blackboard State Management                                                                                                                            
+ ### Priority: HIGH – The central state manager.                                                                                                                    
+                                                                                                                                                                    
+ - [x] **Create `blackboard/board.py`**                                                                                                                             
+     - **Purpose:** To own and manage all shared, mutable state for the scheduling process. Exposes query methods for the orchestrator and tools. (§5.1, §6.2)      
+     - **Key Methods:** `get_next_unscheduled_course()`, `get_available_day()`, `get_used_rooms_on_day(day)`, `get_used_lecturers_on_day(day)`, `is_complete()`,    
+ `has_conflicts()`.                                                                                                                                                 
+                                                                                                                                                                    
+ ## Phase 4: Agent Support Tools                                                                                                                                    
+ ### Priority: MEDIUM – Agents need these tools to query state.                                                                                                     
+                                                                                                                                                                    
+ - [ ] **Create `tools/check_room.py`**                                                                                                                             
+     - **Purpose:** Provide a tool for the `RoomAgent`. Answers "is this room free on this day?" by reading from the Blackboard. (§6.2, §8.1)                       
+ - [ ] **Create `tools/check_lecturer.py`**                                                                                                                         
+     - **Purpose:** Provide a tool for the `LecturerAgent`. Answers "is this lecturer free on this day?" by reading from the Blackboard. (§6.2, §8.2)               
+                                                                                                                                                                    
+ ## Phase 5: Agent Implementation                                                                                                                                   
+ ### Priority: MEDIUM – The LLM-powered components.                                                                                                                 
+                                                                                                                                                                    
+ - [ ] **Create `agents/room_agent.py`**                                                                                                                            
+     - **Purpose:** Define the `pydantic-ai` agent responsible for suggesting a room based on the course and day. Returns a `RoomSuggestion` result. (§6.2, §8.1)   
+ - [ ] **Create `agents/lecturer_agent.py`**                                                                                                                        
+     - **Purpose:** Define the `pydantic-ai` agent responsible for suggesting a lecturer for a course and day. Returns a `LecturerSuggestion` result. (§6.2, §8.2)  
+                                                                                                                                                                    
+ ## Phase 6: Orchestration                                                                                                                                          
+ ### Priority: CRITICAL – The brain of the application.                                                                                                             
+                                                                                                                                                                    
+ - [ ] **Create `orchestrator/orchestrator.py`**                                                                                                                    
+     - **Purpose:** Implement the main control loop that drives scheduling. This is a plain Python class that acts as the **Mediator** and applies the              
+ **Reflexion** pattern. It is **not** an agent. (§7, §6.2)                                                                                                          
+     - **Key Responsibilities:**                                                                                                                                    
+         1.  **State-driven Loop:** Run the main `while` loop based on `Blackboard.is_complete()`.                                                                  
+         2.  **State Query:** Get the next course and an available day from the Blackboard.                                                                         
+         3.  **Agent Mediation:** Call the `RoomAgent` and `LecturerAgent` sequentially.                                                                            
+         4.  **Result Handling:** Check the `success` flag on agent results. Log failures to the Blackboard via `SchedulingFailure` and loop back.                  
+         5.  **State Mutation:** On success, write the new `TimetableSlot` to the Blackboard.                                                                       
+         6.  **Reflexion:** After writing, run a conflict check. If conflicts are found, remove the slot, log the conflict, and loop back to self-correct.          
+         7.  **Retry Management:** Enforce a retry limit to prevent infinite loops.                                                                                 
+                                                                                                                                                                    
+ ## Phase 7: Application Bootstrap                                                                                                                                  
+ ### Priority: LOW – The entry point that wires everything together.                                                                                                
+                                                                                                                                                                    
+ - [ ] **Create `main.py`**                                                                                                                                         
+     - **Purpose:** The main entry point for the application. (§6.1)                                                                                                
+     - **Logic:**                                                                                                                                                   
+         1.  Use `core.log` to set up logging.                                                                                                                      
+         2.  Use tools from Phase 2 to load all data.                                                                                                               
+         3.  Initialize the `Blackboard` with the loaded data.                                                                                                      
+         4.  Initialize the `Orchestrator` with the Blackboard and agent instances.                                                                                 
+         5.  Call the orchestrator's main run method.                                                                                                               
+         6.  Print the final timetable or failure report from the Blackboard.      

@@ -1,307 +1,545 @@
-
-# SPECIFICATIONS.md — Enterprise Adaptive Scheduler
-
-## 1. Project Overview
-The **Enterprise Adaptive Scheduler** is a multi-agent system built with **Pydantic AI** designed to autonomously generate valid, conflict-free schedules. This system relies on a strict **Constraint-Based** model, prioritizing state-space reduction, the **Orchestration Pattern**, and the **Reflexion Pattern** to manage domain constraints.
-
-### Core Technologies
-*   **Framework:** Pydantic AI (Strict schema validation for LLM outputs).
-*   **Language:** Python 3.12+ (Asyncio for parallel validation).
-*   **Data Layer:** Abstracted Data Contracts (Agnostic to JSON, SQL, or API backends).
-
----
-## 4.D Architecture Enforcement Rules [NEW]
-
-### **Strict Mediator Pattern Requirements:**
-
-1. **No Direct Agent Communication:**
-   - Agents MUST NOT import, reference, or have any awareness of other agents
-   - Agent output models MUST NOT be used as input models for other agents
-   - All inter-agent data MUST pass through Orchestrator transformation
-
-2. **Orchestrator Sovereignty:**
-   - The Orchestrator owns ALL workflow and sequencing logic
-   - Agents MUST be stateless regarding workflow position
-   - The Orchestrator decides which agents to involve and when
-
-3. **Context Isolation:**
-   - Each agent receives ONLY the context it needs from the Orchestrator
-   - The Orchestrator MUST transform outputs before sending to next agent
-   - No agent should infer workflow state from its input context
-
-4. **Implementation Verification:**
-   - Code reviews MUST check for direct agent dependencies
-   - Import statements MUST NOT cross agent boundaries
-   - All agent communication MUST be traceable through the Orchestrator
-
-
-## 2. Implementation Philosophy: "Imperative First"
-This project adheres to a strict hierarchy of authority and the Single Responsibility Principle (SRP) to ensure system reliability:
-
-*   **Deterministic Guardrails:** Mathematical clashes, temporal availability are handled exclusively by **Python tools**. The AI is never trusted to "calculate" availability.
-*   **Heuristic Reasoning:** The AI is reserved for **Strategy and Pedagogy**, deciding which execution paths or time slots are "optimal" based on non-mathematical factors (e.g., preventing subject fatigue).
-*   **The "Flavor vs. Fact" Rule:** The Python Engine ensures the **Facts** (the schedule is physically and temporally valid); the AI provides the **Flavor** (the schedule is strategically optimized).
-
+# SPECIFICATIONS — Weekly Timetable Generator
 
 ---
 
+## 0. Instructions for Coding Agents
 
-## 3. Domain Constraints & Contracts
-These represent the immutable "Rules of the Game". The system interacts with these rules via defined schemas, abstracting away the underlying database.
+This section is for any coding agent (aider, Claude, etc.) reading this file at the start of a new session. Read this section first and follow it for the entire session.
 
-*   **Temporal Scope:** Operations are bounded by defined working hours and operational days (e.g., Monday-Friday, 08:00-17:00), including hard exclusion zones (e.g., mandatory lunch hours).
-*   **Workload Fulfillment:** Entities (courses/tasks) possess strict temporal quotas that must be met precisely. Over-scheduling and under-scheduling trigger automatic rejections.
-*   **Pedagogical Daily Caps:** To prevent fatigue, no single entity can exceed a defined daily threshold limit.
-*   **Zero-Overlap Policy:** A strict constraint ensuring absolute uniqueness for any (Time, Space) coordinate.
+### 0.1 What This Project Is
 
----
+A pydantic-ai multi-agent timetable generator. Full details in §1 onwards. The developer works one file at a time, reads and understands each file, then copies it manually. Do not generate multiple files at once.
 
+### 0.2 How to Find the Current Task
 
-## 4. Architecture & Design Patterns
-The system architecture separates deterministic state management from non-deterministic intelligence using a strict Star (Hub-and-Spoke) Topology. This ensures that the system remains modular and prevents "pipeline" logic from creating brittle dependencies between agents.
+The developer will attach `PROGRESS.md` alongside this file. Read `PROGRESS.md` to find the first unchecked task `[ ]`. That is the only task for this session. Do not work ahead.
 
-### A. Topology Diagram
-Plaintext
+### 0.3 Coding Rules — Non-Negotiable
 
-              [ CRITIC: POLICY ]          [ CRITIC: ROOM ]
-                         ^                         ^
-                         |        (Audit)          |
-                         +-----------+-------------+
-                                     |
-          +------------+             |            +----------------+
-          |  COURSE    | <----[ORCHESTRATOR]----> |   BLACKBOARD   |
-          |   AGENT    |                          | (Grid + Memory)|
-          |  (Proposer)|                          +----------------+
-          +------------+
-          
+These apply to every file in this project without exception:
 
+| Rule | Detail |
+|------|--------|
+| **Imperative style only** | Use explicit loops and named variables. No lambdas, no chained comprehensions, no functional abstractions |
+| **One file, one job** | Every file has exactly one responsibility as defined in §6.2. Do not add anything outside that definition |
+| **No agent-to-agent imports** | Agents are unaware of each other. Only the orchestrator imports agents |
+| **Agent result contract** | Every agent result must carry `success: bool`, `reason: str`, and a nullable value field. See §8.3 |
+| **Orchestrator is the only writer** | Tools and agents never write to the Blackboard. Only the orchestrator does |
+| **Orchestrator is plain Python** | The orchestrator is a plain Python class — not a pydantic-ai `Agent`. It runs a deterministic control loop. No LLM is involved in orchestration decisions. Only the room and lecturer agents use LLMs |
+| **Plain names** | No jargon names like `temporal`, `spatial`, `stratified`, `handler`, `manager`, `processor` |
+| **Log everything** | Every orchestrator decision, agent call, and conflict must be logged via `core/log.py` |
 
-### B. Core Components [UPDATED]
-- **The Blackboard (Hub):** The thread-safe, single source of truth. It manages the Grid and the Rejection Ledger. Only the Orchestrator holds write privileges to this state.
-- **The Orchestrator (Mediator):** Acts as the **sole coordinator and decision-maker**. It **prevents any agent-to-agent communication** and eliminates pipeline dependencies by enforcing that:
-   1. **Agents only communicate with the Orchestrator**, never with each other
-   2. **Agents have no knowledge** of other agents' existence or sequence
-   3. **Workflow logic resides exclusively in the Orchestrator**, not in agent interactions
-- **State Space Reduction (The Strategist):** A pre-processor agent that analyzes workload contracts before the main loop begins. It determines the optimal execution sequence to prevent late-stage deadlocks.
-- **The Course Agent (Proposer):** [UPDATED] A specialized agent whose sole responsibility is to suggest Temporal Coordinates (Day/Time) based on course requirements and the current blackboard state.
-- **The Room Agent (Auditor):** [UPDATED] A specialized agent that performs high-fidelity audits of room availability and physical constraints for proposed coordinates.
+### 0.4 Before Writing Any Code
 
-### C. Design Patterns
-- **The Generator-Critic Pattern:** The Course Agent proposes a candidate slot, and the Room Agent audits it against domain constraints.
-- **The Reflexion Pattern:** If a constraint is violated, the exact failure reason is logged to the Rejection Ledger. The Orchestrator then passes this history back to the Course Agent to prune its future search space.
-- **The Mediator Pattern:** The Orchestrator isolates agent conversations, ensuring that agents never communicate directly. This **eliminates pipeline architectures** where agents have implicit dependencies on each other's outputs.
-- **Anti-Pipeline Enforcement:** The system **explicitly forbids** any form of sequential pipeline where Agent A's output becomes Agent B's input. Instead, the Orchestrator receives outputs, makes decisions, and provides fresh context to each agent.
+1. Read the SRP table in §6.2 and find the row for the file being requested
+2. Read the section that describes that file's behaviour in detail
+3. Write only what is in scope for that file — nothing more
+
+### 0.5 After Writing the Code
+
+State clearly:
+- What the file does in one sentence
+- What other files it imports from
+- What files will import from it later
+- Any assumption made that is not covered by the spec
 
 ---
 
+## 1. Project Description
 
-## 5. Pydantic AI Implementation Guide [NEW]
+A multi-agent system built with **pydantic-ai** that generates a weekly class timetable (Monday–Friday) from four source entities: **Courses**, **Rooms**, **Lecturers**, and **Policies**. The system assigns each course a day, room, and lecturer — without any clashes — while respecting the school's scheduling policies.
 
-### A. Agent Definition Protocol
-All agents inherit from Pydantic AI's `Agent` class and follow a consistent pattern:
+The timetable output is flat and simple:
+
+| Day       | Course      | Room   | Lecturer   |
+|-----------|-------------|--------|------------|
+| Monday    | Mathematics | Lab A  | Dr. Siti   |
+| Tuesday   | Physics     | Room 3 | Mr. Haziq  |
+| ...       | ...         | ...    | ...        |
+
+No dates are involved. The schedule repeats every week.
+
+---
+
+## 2. Purpose
+
+- Demonstrate a **real orchestrator-based multi-agent architecture** using pydantic-ai — not a simple sequential pipeline.
+- Practice the **Blackboard, Mediator, and Reflexion** design patterns within a star topology.
+- Keep all logic explicit, readable, and imperative — no hidden functional abstractions.
+- Produce a clean, conflict-free timetable that respects policy constraints.
+
+---
+
+## 3. Source Entities
+
+These are the raw data models the system works with. They are simple — no complex nesting.
+
+### 3.1 Course
+```python
+class Course(BaseModel):
+    name: str          # e.g. "Mathematics"
+```
+
+### 3.2 Room
+```python
+class Room(BaseModel):
+    name: str          # e.g. "Lab A"
+```
+
+### 3.3 Lecturer
+```python
+class Lecturer(BaseModel):
+    name: str          # e.g. "Dr. Siti"
+```
+
+### 3.4 Policy
+```python
+class Policy(BaseModel):
+    school_days: list[str]   # e.g. ["Tuesday", "Wednesday", "Thursday", "Friday"]
+    school_start_hour: int   # e.g. 8  (08:00)
+    school_end_hour: int     # e.g. 17 (17:00)
+    lunch_start_hour: int    # e.g. 12 (12:00)
+    lunch_end_hour: int      # e.g. 13 (13:00)
+```
+
+Policies act as hard constraints. The orchestrator must never assume which days are valid — it always reads `policy.school_days` from the Blackboard. Any slot that falls during lunch or outside school hours is also invalid.
+
+---
+
+## 4. Output Model
 
 ```python
-# Example: course_agent.py
-class CourseAgent(Agent):
-    """Proposes valid scheduling coordinates for courses."""
-    
-    def __init__(self, deps: AgentDependencies):
-        super().__init__(
-            system=self._get_system_prompt(),
-            tools=[
-                deps.tools.get_course_data,
-                deps.tools.check_temporal_availability,
-                deps.tools.get_working_hours,
-            ]
-        )
-        self.blackboard = deps.blackboard
-    
-    @agent_session
-    async def propose_slot(self, course: CourseModel) -> ProposalModel:
-        """Main entry point for course scheduling proposals."""
+class TimetableSlot(BaseModel):
+    day: str           # "Monday" | "Tuesday" | ... | "Friday"
+    course: str        # Course name
+    room: str          # Room name
+    lecturer: str      # Lecturer name
 ```
 
-### B. Dependency Injection Pattern
-The system uses a centralized dependency injection container (`core/deps.py`) to manage all shared resources:
+A complete timetable is a list of `TimetableSlot` — one per course.
+
+---
+
+## 5. Design Patterns
+
+### 5.1 Blackboard Pattern
+A shared in-memory state object (`Blackboard`) holds the current state of the timetable being built. Only the orchestrator reads from and writes to the Blackboard. Agents never touch it directly.
+
+```
+Blackboard
+├── courses: list[Course]
+├── rooms: list[Room]
+├── lecturers: list[Lecturer]
+├── policy: Policy
+├── draft_slots: list[TimetableSlot]       # work in progress
+├── conflicts: list[str]                   # detected clashes
+└── failures: list[SchedulingFailure]      # agent-reported dead ends
+```
+
+Key methods the orchestrator uses to query the Blackboard — never assumed, always asked:
+
+| Method | Returns | Purpose |
+|--------|---------|---------|
+| `get_next_unscheduled_course()` | `Course \| None` | Next course with no slot yet |
+| `get_available_day()` | `str \| None` | First valid school day that still has at least one free room AND one free lecturer. Returns `None` if no day qualifies |
+| `get_used_rooms_on_day(day)` | `list[str]` | Room names already assigned on that day |
+| `get_used_lecturers_on_day(day)` | `list[str]` | Lecturer names already assigned on that day |
+| `is_complete()` | `bool` | True when every course has a slot |
+| `has_conflicts()` | `bool` | True if conflicts list is non-empty after last check |
+
+`get_available_day()` checks against `policy.school_days` — it will never return a day not listed in the policy. This is the single place where policy-day validation lives.
+
+### 5.2 Mediator Pattern (Orchestrator)
+The **Orchestrator** is the sole mediator. It is the only component that:
+- Calls agents
+- Reads results from agents
+- Writes updates back to the Blackboard
+
+Agents do **not** talk to each other. All inter-agent coordination goes through the Orchestrator. This is a strict **star topology**.
+
+```
+           ┌─────────────┐
+           │ Orchestrator │
+           └──────┬───────┘
+        ┌─────────┼─────────┐
+        ▼         ▼         ▼
+   RoomAgent  LecturerAgent  (future agents)
+```
+
+### 5.3 Reflexion Pattern
+After each round of agent calls, the Orchestrator evaluates the Blackboard for:
+- Room double-bookings on the same day
+- Lecturer double-bookings on the same day
+- Slots that violate policy (outside hours, during lunch)
+
+If conflicts are found, the Orchestrator triggers a **revision cycle** — it instructs the relevant agent to retry with updated constraints. This loop continues until the timetable is conflict-free or a retry limit is reached.
+
+```
+Orchestrator
+  → call agents
+  → evaluate blackboard
+  → conflicts found? → revise → repeat
+  → no conflicts? → finalise timetable
+```
+
+---
+
+## 6. Architecture
+
+### 6.1 Folder Structure
+
+```
+project/
+│
+├── core/
+│   ├── deps.py              # pydantic-ai dependency container (wraps Blackboard)
+│   ├── models.py            # All pydantic models: entities, results, failures, timetable slot
+│   └── log.py               # Logging setup — one logger, used everywhere
+│
+├── database/
+│   ├── courses.json         # Raw course data   [{"name": "Mathematics"}, ...]
+│   ├── rooms.json           # Raw room data     [{"name": "Lab A"}, ...]
+│   ├── lecturers.json       # Raw lecturer data [{"name": "Dr. Siti"}, ...]
+│   └── policy.json          # School policy     {"school_days": ["Tuesday", ...], "school_start_hour": 8, ...}
+│
+├── tools/
+│   ├── get_courses.py       # Reads courses.json    → returns list[Course]
+│   ├── get_rooms.py         # Reads rooms.json      → returns list[Room]
+│   ├── get_lecturers.py     # Reads lecturers.json  → returns list[Lecturer]
+│   ├── get_policy.py        # Reads policy.json     → returns Policy
+│   ├── check_room.py        # Is this room free on this day?     → bool + reason
+│   └── check_lecturer.py    # Is this lecturer free on this day? → bool + reason
+│
+├── agents/
+│   ├── room_agent.py        # Suggests a room for a course+day → RoomSuggestion
+│   └── lecturer_agent.py    # Suggests a lecturer for a course+day → LecturerSuggestion
+│
+├── orchestrator/
+│   └── orchestrator.py      # Control loop: drives scheduling, mediates agents, applies reflexion
+│
+├── blackboard/
+│   └── board.py             # Blackboard class: owns all shared mutable state
+│
+└── main.py                  # Entry point: load data, run orchestrator, print timetable
+```
+
+### 6.2 SRP Mapping
+
+| File | Single Responsibility |
+|------|-----------------------|
+| `core/models.py` | Define all data shapes — entities, result types, `SchedulingFailure`, `TimetableSlot` |
+| `core/deps.py` | Define `AgentDeps` — a single dataclass with one field `board: Blackboard`. Imported by both agents so they share a common deps type without importing from each other |
+| `core/log.py` | Configure and expose the logger |
+| `database/courses.json` | Source of truth for course data |
+| `database/rooms.json` | Source of truth for room data |
+| `database/lecturers.json` | Source of truth for lecturer data |
+| `database/policy.json` | Source of truth for policy data |
+| `blackboard/board.py` | Own and mutate all shared scheduling state. Expose query methods including `get_available_day()` which enforces policy.school_days |
+| `tools/get_courses.py` | Read `courses.json` and return `list[Course]` — nothing else |
+| `tools/get_rooms.py` | Read `rooms.json` and return `list[Room]` — nothing else |
+| `tools/get_lecturers.py` | Read `lecturers.json` and return `list[Lecturer]` — nothing else |
+| `tools/get_policy.py` | Read `policy.json` and return `Policy` — nothing else |
+| `tools/check_room.py` | Answer "is this room free on this day?" — reads Blackboard state only |
+| `tools/check_lecturer.py` | Answer "is this lecturer free on this day?" — reads Blackboard state only |
+| `agents/room_agent.py` | Propose a room assignment — always returns `RoomSuggestion` |
+| `agents/lecturer_agent.py` | Propose a lecturer assignment — always returns `LecturerSuggestion` |
+| `orchestrator/orchestrator.py` | Drive the control loop, mediate agents, apply reflexion, handle failures |
+| `main.py` | Wire everything together and run |
+
+> **Refactoring note:** When the prototype is stable, the four `get_*.py` tools are the only files that need to change to switch from JSON to a real database. Everything else — agents, orchestrator, Blackboard — remains untouched. This is SRP paying off.
+
+---
+
+## 7. Orchestrator Behaviour (Non-Pipeline)
+
+### 7.1 Why This Is Not a Pipeline
+
+A pipeline has a fixed order: step 1 → step 2 → step 3 → done. Each step runs once. There is no decision-making between steps — just hand-off.
+
+The orchestrator here is a **control loop**. After every agent call and every Blackboard write, the orchestrator stops and asks: *"What does the Blackboard tell me right now? Is it valid? What needs to happen next?"* It can loop back, skip forward, defer a course, or retry with different constraints. The order of work is decided at runtime by reading state — not hardcoded in the program.
+
+The simplest way to spot a disguised pipeline: if removing the `while` loop and flattening the code into a straight call sequence still produces the same result, it was a pipeline all along.
+
+### 7.2 The Mental Model
+
+Think of the orchestrator as a **foreman on a building site**. The room agent and lecturer agent are specialist workers. The foreman does not say "first you build the wall, then you wire the electrics, done." The foreman:
+
+- Looks at what is built so far (Blackboard)
+- Decides what the next problem to solve is
+- Sends the right worker to tackle that specific problem
+- Checks the worker's result before accepting it
+- Decides if it is acceptable or needs to be redone
+- Loops until the building is complete — or declares it cannot be finished
+
+The workers never talk to each other. They only report back to the foreman.
+
+### 7.3 The Control Loop (Pseudocode)
+
+```
+load all data onto Blackboard
+
+retry_count = 0
+
+LOOP while Blackboard has unscheduled courses:
+
+    if retry_count > MAX_RETRIES:
+        raise SchedulingError — cannot resolve
+
+    course = Blackboard.get_next_unscheduled_course()
+
+    --- ask Blackboard for a valid day ---
+    day = Blackboard.get_available_day()
+    # checks: day is in policy.school_days
+    #         at least one room is free on that day
+    #         at least one lecturer is free on that day
+
+    if day is None:
+        log failure — no valid day available for this course
+        defer course
+        retry_count += 1
+        CONTINUE to top of loop          ← do not proceed without a valid day
+
+    --- call RoomAgent ---
+    room_result = RoomAgent.run(course, day)
+
+    if room_result.success is False:
+        log failure to Blackboard
+        defer course
+        retry_count += 1
+        CONTINUE to top of loop          ← do not proceed blindly
+
+    --- call LecturerAgent ---
+    lecturer_result = LecturerAgent.run(course, day)
+
+    if lecturer_result.success is False:
+        log failure to Blackboard
+        defer course
+        retry_count += 1
+        CONTINUE to top of loop          ← stop, loop back
+
+    --- write to Blackboard ---
+    write slot (course, day, room, lecturer) to Blackboard
+
+    --- Reflexion check ---
+    run conflict check on entire Blackboard
+
+    if conflicts found:
+        remove the slot just written
+        log conflict to Blackboard
+        defer course
+        retry_count += 1
+        CONTINUE to top of loop          ← self-correct, never accept bad state
+
+END LOOP
+
+return final timetable from Blackboard
+```
+
+The `CONTINUE` statements are what make this a real orchestrator loop — every failure, every conflict, sends control back to the top where the orchestrator reassesses state before deciding what to do next. The orchestrator never assumes a day is valid — it always asks the Blackboard.
+
+### 7.4 The Three Patterns in the Loop
+
+| Pattern | Where it appears in the loop |
+|---------|------------------------------|
+| **Blackboard** | Every read (`pick next course`, `pick day`, `conflict check`) and every write (`write slot`, `log failure`) goes through the Blackboard |
+| **Mediator** | The orchestrator is the only caller of agents — agents never appear in each other's code |
+| **Reflexion** | The conflict check after every Blackboard write — the orchestrator inspects its own work and corrects it before moving on |
+
+These are not three separate phases. They are three roles the orchestrator plays inside the same loop, on every iteration.
+
+---
+
+## 8. Agent Contracts
+
+Each agent is a pydantic-ai `Agent` with typed deps and a typed result. Every agent **always** returns a structured result — success or failure. The orchestrator always checks `result.success` before doing anything with the result. Agents never raise exceptions for unavailability; they return a failure result instead.
+
+### 8.0 AgentDeps (core/deps.py)
+
+`AgentDeps` is the dependency container passed into every agent at runtime by the orchestrator. It gives agents read access to the Blackboard so their tools can query current availability without writing to it.
+
+**The file contains exactly this — nothing more:**
 
 ```python
-# core/deps.py
-class AgentDependencies(BaseModel):
-    """Dependencies injected into all agents."""
-    blackboard: BlackboardState
-    tools: ToolRegistry
-    config: AgentConfig
+from dataclasses import dataclass
+from blackboard.board import Blackboard
 
-def get_agent_dependencies() -> AgentDependencies:
-    """Factory function providing dependencies to agents."""
-    return AgentDependencies(
-        blackboard=get_blackboard(),
-        tools=get_tool_registry(),
-        config=get_agent_config()
-    )
+@dataclass
+class AgentDeps:
+    board: Blackboard
 ```
 
-### C. Mediator-Focused Implementation Example
+**How it connects to a pydantic-ai agent:**
+
+Each agent declares `AgentDeps` as its deps type when it is defined:
 
 ```python
-# CORRECT: Mediator Pattern Implementation
-class Orchestrator:
-    async def mediate_scheduling(self, course_id: str):
-        # 1. Get fresh context from Blackboard (not from previous agent)
-        context = self.blackboard.get_scheduling_context(course_id)
-        
-        # 2. Request proposal FROM SCRATCH (not continuing a conversation)
-        proposal = await self.course_agent.propose_slot(context)
-        
-        # 3. Transform for room validation (Mediator role)
-        room_validation_request = RoomValidationRequest(
-            room_id=proposal.room_id,
-            day=proposal.day,
-            time=proposal.time,
-            course_size=context.course_size
-            # NOTE: Not passing the full proposal or Course Agent reasoning!
-        )
-        
-        # 4. Independent validation request
-        validation = await self.room_agent.validate_room(room_validation_request)
-        
-        # 5. Orchestrator makes final decision
-        return self._synthesize_decision(proposal, validation)
+from pydantic_ai import Agent
+from core.deps import AgentDeps
+from core.models import RoomSuggestion
+
+room_agent = Agent(
+    model="...",
+    deps_type=AgentDeps,
+    result_type=RoomSuggestion,
+)
 ```
 
-### C. Message Flow & Schema Contracts
-- **Agent Input Schemas:** Each agent accepts strictly typed Pydantic models
-- **Agent Output Schemas:** Each agent returns validated Pydantic models
-- **Error Handling:** All agent failures produce structured error responses with actionable feedback
-
----
-
-
-## 6. Technical Anchors (The Implementation Boundaries)
-All components are anchored to these specific Pydantic constructs to enforce strict I/O boundaries.
-
-### **A. Dependency Injection (Agent Tools)**
-Agents are prohibited from accessing global state and must use stateless tools injected via the dependency container:
-
-*   **Data Tools:** `tools/get_data.py` - Functions for retrieving course, room, and policy data
-*   **Course Tools:** `tools/course_tools.py` - Course-specific validation and calculation logic
-*   **Room Tools:** `tools/room_tools.py` - Room-specific availability and constraint checking
-*   **Context Tools:** Readers that allow agents to view the `Rejection Ledger` to enable Reflexion
-
-### **B. Schema Contracts (Interface Models)**
-| Component | Model Name | Responsibility |
-| :--- | :--- | :--- |
-| **State** | `BlackboardState` | Defines the structure of the Grid, Fulfillment Counters, and Ledger. |
-| **Data** | `EntityModel` | Defines the requirement parameters of a workload item (e.g., Course). |
-| **I/O** | `ProposalModel` | Enforces structural validity for proposed Coordinates (Day, Time, Space). |
-
-### **C. Dependency Container Pattern** [NEW]
-All shared resources are managed through a centralized dependency container:
+When the orchestrator calls an agent, it constructs and passes an `AgentDeps` instance:
 
 ```python
-# Directory Structure Addition
-adaptive_scheduler/
-├── core/                    # Dependency injection & configuration
-│   ├── deps.py             # Dependency registry (factory functions)
-│   └── config.py           # LLM settings, timeouts, environment config
+deps = AgentDeps(board=self.board)
+result = await room_agent.run(prompt, deps=deps)
 ```
 
-Benefits:
-- **Single source of truth** for shared resources
-- **Easy mocking** for unit testing
-- **Consistent configuration** across environments
-- **Clean lifecycle management** for stateful components
+Inside a tool registered to the agent, `AgentDeps` is accessed via the `RunContext`:
 
----
+```python
+from pydantic_ai import RunContext
+from core.deps import AgentDeps
 
-
-## 7. Directory Structure (Clean Architecture) [UPDATED]
-```text
-adaptive_scheduler/
-├── core/                    # [NEW] Dependency injection & configuration
-│   ├── deps.py             # Dependency registry (factory functions)
-│   └── config.py           # LLM settings, timeouts, environment config
-├── config/                  # Environment-specific settings only
-├── data/                    # Data Source Adapters (JSON, SQL, APIs)
-├── schemas/
-│   ├── communication.py     # Pydantic models for Agent-Orchestrator I/O
-│   └── state.py            # Internal Blackboard & Grid schemas
-├── domain/
-│   └── blackboard.py        # State Manager: Grid & Rejection Ledger
-├── services/
-│   ├── orchestrator.py      # Mediator: The Master Loop & Reflexion Logic
-└── agents/                  # [UPDATED] SRP-based agent names
-│   ├── strategist.py        # Optimizer: Determines execution priority
-│   ├── course_agent.py      # [UPDATED] Proposer: Suggests valid time coordinates
-│   └── room_agent.py        # [UPDATED] Validator: Maps physical space availability
-├── tools/                   # [UPDATED] Agent Capabilities (Stateless Functions)
-│   ├── get_data.py          # [UPDATED] Data retrieval tools
-│   ├── course_tools.py      # [UPDATED] Course-specific validation logic
-│   └── room_tools.py        # [UPDATED] Room-specific validation logic
-└── main.py                  # Application Bootstrap
+async def check_room(ctx: RunContext[AgentDeps], room_name: str, day: str) -> str:
+    used_rooms = ctx.deps.board.get_used_rooms_on_day(day)
+    # ... check and return result
 ```
 
+**Rules for `AgentDeps`:**
+
+| Rule | Detail |
+|------|--------|
+| Defined once | Only in `core/deps.py` — never inside an agent file |
+| Shared import | Both `room_agent.py` and `lecturer_agent.py` import from `core/deps.py` — never from each other |
+| Read-only access | Agents call Blackboard query methods only — never write methods |
+| Orchestrator constructs it | The orchestrator builds `AgentDeps(board=self.board)` before every agent call |
+| Tools access it via context | Tools receive deps through `RunContext[AgentDeps]` — never as a direct argument |
+
+### 8.1 RoomAgent
+
+- **Input (via deps):** Blackboard (read-only view of used rooms per day)
+- **Task:** Given a course and target day, suggest a room that is not already used on that day
+- **Tools available:** `check_room`
+- **Output:**
+
+```python
+class RoomSuggestion(BaseModel):
+    success: bool
+    room: str | None      # populated only when success is True
+    day: str | None       # populated only when success is True
+    reason: str           # always populated — e.g. "Room Lab A is free on Monday"
+                          #                         "All rooms taken on Tuesday"
+```
+
+### 8.2 LecturerAgent
+
+- **Input (via deps):** Blackboard (read-only view of used lecturers per day)
+- **Task:** Given a course and target day, suggest a lecturer that is not already used on that day
+- **Tools available:** `check_lecturer`
+- **Output:**
+
+```python
+class LecturerSuggestion(BaseModel):
+    success: bool
+    lecturer: str | None  # populated only when success is True
+    day: str | None       # populated only when success is True
+    reason: str           # always populated — e.g. "Dr. Siti is free on Monday"
+                          #                         "All lecturers assigned on Wednesday"
+```
+
+### 8.3 Agent Result Contract (Shared Rules)
+
+These rules apply to every agent in the system:
+
+| Rule | Detail |
+|------|--------|
+| Always return a result | Agents never raise exceptions for unavailability — they return `success=False` |
+| Always populate `reason` | Even on success, `reason` must be filled — it goes into the log |
+| Never write to Blackboard | Agents only return results; the orchestrator decides what to write |
+| Never call another agent | Agents are unaware of each other's existence |
+| `None` fields on failure | `room`, `day`, `lecturer` are `None` when `success=False` — orchestrator must not read them |
+
+### 8.4 SchedulingFailure (Blackboard Record)
+
+When an agent returns `success=False`, the orchestrator writes a `SchedulingFailure` to the Blackboard before looping back:
+
+```python
+class SchedulingFailure(BaseModel):
+    course: str       # which course could not be scheduled
+    agent: str        # which agent reported the failure: "room_agent" | "lecturer_agent"
+    day: str          # which day was attempted
+    reason: str       # copied from agent result
+```
+
+This record is used at the end of the run to produce a clear error report if the timetable could not be completed.
+
 ---
 
+## 9. Conflict Rules
 
-## 8. Message Flow & Agent I/O [NEW]
+A timetable slot is **invalid** if any of the following are true:
 
-### A. Agent Communication Protocol
-1. **Orchestrator → Course Agent:** "Propose a slot for Course X"
-2. **Course Agent → Tools:** Query data and validate constraints
-3. **Course Agent → Orchestrator:** Return `ProposalModel` or `RejectionReason`
-4. **Orchestrator → Room Agent:** "Validate room availability for Proposal Y"
-5. **Room Agent → Tools:** Check room constraints and availability
-6. **Room Agent → Orchestrator:** Return `ValidationResult` (pass/fail with details)
+| Rule | Description |
+|------|-------------|
+| Room clash | Same room assigned to two courses on the same day |
+| Lecturer clash | Same lecturer assigned to two courses on the same day |
+| Outside hours | Slot assigned outside `school_start_hour` – `school_end_hour` |
+| Lunch conflict | Slot falls within `lunch_start_hour` – `lunch_end_hour` |
 
-### B. Reflexion Loop Implementation
-1. **Proposal Rejection:** Details logged to `RejectionLedger` in blackboard
-2. **History Injection:** Course Agent receives rejection history via context
-3. **Adaptive Behavior:** Course Agent uses history to avoid previously failed patterns
-4. **Convergence:** Loop continues until valid proposal or maximum attempts reached
+The orchestrator checks all rules after each agent round. Agents are only told about violations that affect their domain (room agent gets room conflicts, lecturer agent gets lecturer conflicts).
 
 ---
 
+## 10. Constraints & Assumptions
 
-## 9. Execution Logic (The State Machine)
-1.  **Context Assembly:** The Orchestrator initializes the dependency container and blackboard.
-2.  **Strategic Ordering:** The Strategist evaluates the workload and returns a prioritized Execution Queue.
-3.  **Negotiation Loop:** For each required quota in the Queue:
-    *   **Proposal:** The Course Agent uses injected tools to suggest a slot adhering to domain constraints.
-    *   **Validation:** The Room Agent verifies physical feasibility for the proposed slot.
-4.  **Resolution:**
-    *   **Valid:** Orchestrator commits the coordinate to the Blackboard and advances the state.
-    *   **Invalid:** Orchestrator updates the Rejection Ledger; triggers a reflexive retry within the negotiation loop.
-
----
-
-
-## 10. Testing & Validation Strategy [NEW]
-
-### A. Unit Testing
-- **Deterministic Tools:** Test tools in isolation with mocked data
-- **Agent Logic:** Test agents with mocked dependencies from `core/deps.py`
-
-### B. Integration Testing
-- **Agent Coordination:** Test Orchestrator with real agents but mocked LLM
-- **End-to-End Flow:** Test complete scheduling pipeline with sample data
-
-### C. LLM Testing Strategy
-- **Mock Responses:** Use predefined responses for reproducible tests
-- **Prompt Testing:** Validate system prompts produce expected behavior
-- **Regression Testing:** Capture and replay successful LLM interactions
+- Valid school days are defined in `policy.school_days` — never hardcoded anywhere else in the system. Monday through Friday are possible days but which ones are active is determined solely by the policy
+- One course per slot; each course appears exactly once in the final timetable
+- Rooms and lecturers are reusable across days but not within the same day
+- Policy is a single global object — all courses share the same policy
+- **All hours are whole integers only — no minutes, no half-hours.** e.g. `8` means 08:00, `17` means 17:00. No time formatting, no datetime objects, no string parsing
+- Data is loaded from Python dicts/lists for now (no database)
+- Max retry limit for reflexion: **5 rounds** before raising an error
+- No partial or overlapping time slots — slots are day-level only (no hours per slot except policy bounds)
+- **Keep data simple and logic straightforward** — the goal of this project is to learn multi-agent orchestration design, not to build a sophisticated scheduling algorithm
 
 ---
 
+## 11. Non-Functional Requirements
 
-## 11. Development Workflow
-1. **Phase 1:** Implement core schemas and dependency container
-2. **Phase 2:** Build deterministic tools and validation logic
-3. **Phase 3:** Implement agents with mocked LLM responses
-4. **Phase 4:** Integrate real LLM providers and refine prompts
-5. **Phase 5:** Add reflexion patterns and optimization logic
+| Concern | Requirement |
+|---------|-------------|
+| Code style | Imperative — explicit loops, clear variable names, no lambdas or comprehension chains |
+| Naming | Plain English names — no domain jargon like "temporal", "spatial", "stratified" |
+| Logging | Log every orchestrator decision, every agent call, every conflict found |
+| Separation | Each file has one job; no file imports from a file that is not its declared dependency |
+| Agent comms | Agents never call each other; only the orchestrator calls agents |
+| Testability | Each tool function is a plain Python function — testable without running an agent |
 
 ---
 
+## 12. Out of Scope (v1)
 
-*Document Version: 2.0 - Updated with Pydantic AI patterns, SRP naming, and dependency injection*
+- Time slots within a day (all slots are day-level)
+- Student group assignments
+- Room capacity limits
+- Lecturer preferences or availability windows
+- Persistent storage (database, file)
+- Web UI or REST API
+- Async execution
+
+---
+
+## 13. Glossary
+
+| Term | Meaning |
+|------|---------|
+| Blackboard | Shared mutable state object read/written only by the orchestrator |
+| Slot | One row in the timetable: day + course + room + lecturer |
+| Clash | Two slots sharing the same room or lecturer on the same day |
+| Reflexion | The orchestrator's self-correction loop — checking and fixing state after every write |
+| Orchestrator | A plain Python class — the central controller. Not a pydantic-ai Agent. The only component that calls agents |
+| Star topology | All communication routes through the orchestrator; no agent-to-agent calls |
+| SchedulingFailure | A structured record written to the Blackboard when an agent cannot find a valid assignment |
+| Agent Result Contract | The rule that every agent always returns a typed success/failure result — never raises for unavailability |
+| `get_available_day()` | Blackboard method that returns the first valid school day with at least one free room and one free lecturer — never returns a day outside `policy.school_days` |
+
+---
+
+*End of SPECIFICATIONS.md*

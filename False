@@ -172,3 +172,42 @@
 
 # 2026-05-02 23:19:34.309767
 +Y
+
+# 2026-05-03 11:37:30.734446
++/settings
+
+# 2026-05-03 11:40:47.901023
++/models gemini/gemini-2.5-pro
+
+# 2026-05-03 11:52:06.807916
++/model
+
+# 2026-05-03 11:53:00.367660
++/settings
+
+# 2026-05-03 11:55:28.498485
++ok. read and understand the SPECIFICATIONS.md about the project scope and specifications. just a yes or no to indicate your understanding. no comments
+
+# 2026-05-03 11:55:46.597491
++/tokens
+
+# 2026-05-03 11:56:00.097655
++/add PROGRESS.md
+
+# 2026-05-03 11:56:42.131639
++we will start with task in from the tasks list in PROGRESS.md. just tell me first what are starting with. just the tasks, no comments
+
+# 2026-05-03 11:57:34.751816
++N
+
+# 2026-05-03 11:59:16.205286
++i have delete the original files in the folder schemas/. we will start from scratch. ok being with first first. always present me codes where i ask for it, DO NOT SHOW ANY CODES after every prompt. also MUST work on one file at a time and prompt for my confirmation before proceeding to the next file
+
+# 2026-05-03 12:01:58.871205
++for my latest instructions, about not shoing code unless requested and also work on one file at atime. are these specified in the .aider.conventions.md?
+
+# 2026-05-03 12:02:35.682688
++/add PROGRESS.md
+
+# 2026-05-03 12:03:18.802932
++ok. start from the first task in A. Schema Contracts from PROGRESS.md
